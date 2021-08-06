@@ -1,25 +1,37 @@
-import logo from './logo.svg';
-import './App.css';
+import { connect } from 'react-redux'
 
-function App() {
-  return (
-    <div className="App">
-      <header className="App-header">
-        <img src={logo} className="App-logo" alt="logo" />
-        <p>
-          Edit <code>src/App.js</code> and save to reload.
-        </p>
-        <a
-          className="App-link"
-          href="https://reactjs.org"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          Learn React
-        </a>
-      </header>
-    </div>
-  );
+import Routes from './routes'
+import { setCurrentUser } from './redux/user/user.actions'
+import { auth, handleUserProfile } from './utils'
+import { useComponentDidMount, useComponentWillUnmount } from './utils'
+
+const App = ({ setCurrentUser, ...restProps }) => {
+  let authListener = null
+
+  useComponentDidMount(() => {
+    authListener = auth.onAuthStateChanged(async userAuth => {
+      if (!userAuth) {
+        return setCurrentUser(userAuth)
+      }
+
+      const userRef = await handleUserProfile(userAuth)
+      userRef.onSnapshot(snapshop => {
+        setCurrentUser({ id: snapshop.id, ...snapshop.data() })
+      })
+    })
+  })
+
+  useComponentWillUnmount(authListener)
+
+  return <Routes />
 }
 
-export default App;
+const mapDispatchToProps = dispatch => {
+  return { setCurrentUser: user => dispatch(setCurrentUser(user)) }
+}
+
+const mapStateToProps = ({ user }) => {
+  return { currentUser: user.currentUser }
+}
+
+export default connect(mapStateToProps, mapDispatchToProps)(App)
